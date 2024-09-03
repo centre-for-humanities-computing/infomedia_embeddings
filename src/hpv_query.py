@@ -1,3 +1,15 @@
+'''
+Make a query for HPV articles in the corpus (based on original paper https://bmcpublichealth.biomedcentral.com/articles/10.1186/s12889-018-6268-x)
+
+Run the script to query corpus and save the results in a jsonl file (in dat/hpv_data).
+
+The script can be run with the --overwrite flag to overwrite existing data: 
+    python hpv_query.py --overwrite
+
+Without the flag, the script will skip files that have already been processed 
+(but reprocessing the last newsmedia file to ensure no data is incomplete if the process was interrupted mid-file).
+'''
+
 import pathlib 
 import json
 import argparse
@@ -187,8 +199,12 @@ def input_parse():
 
 def main(): 
     args = input_parse()
+
+    # def paths
     path = pathlib.Path(__file__)
     corpus_path = path.parents[3] / "infomedia-embedding" / "dat" / "corpus"
+    save_path = path.parents[3] / "infomedia-embedding" / "dat" / "hpv_data"
+    save_path.mkdir(exist_ok=True, parents=True)
 
     # get filepaths and sort them
     file_paths = [file for file in corpus_path.iterdir() if file.suffix == ".jsonl"]
@@ -198,8 +214,8 @@ def main():
     term_pairs = hpv_query_terms()
 
     # process files
-    save_file = path.parents[0] / "hpv_query_data.jsonl"
-    log_file = path.parents[0] / "hpv_query_log.jsonl"
+    save_file = save_path / "hpv_query_data.jsonl"
+    log_file = save_path / "hpv_query_log.jsonl"
 
     all_data = process_all_files(
                                 file_paths=file_paths,
