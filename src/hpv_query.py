@@ -124,9 +124,9 @@ def process_all_files(
         id_key: 
         overwrite: whether to overwrite existing results
     '''
-    # Initialize variables
-    processed_filepaths = []
+    # init vars
     all_data = []
+    processed_filepaths = []
 
     # handle overwrite scenarios
     if overwrite:
@@ -136,43 +136,39 @@ def process_all_files(
             if file.exists():
                 file.unlink()
     
-    elif log_file.exists():
+    elif save_file.exists() and log_file.exists():
         # load the log file
         with open(log_file) as f:
             log = [json.loads(line) for line in f]
             processed_filepaths = [entry["file_path"] for entry in log]
+        
+        print(f"[INFO:] Existing data found. Loading log and save files. Skipping {len(processed_filepaths) - 1} files.") # -1 because we will reprocess the last file
+        # reprocess the last entry to ensure no data is incomplete (if the process was interrupted mid-file)
+        last_entry = log[-1]
+        last_entry_path = pathlib.Path(last_entry["file_path"])
 
-        if log:
-            # reprocess the last file in the log
-            last_entry = log[-1]
-            print(f"[INFO:] Reprocessing {pathlib.Path(last_entry['file_path']).stem} to ensure data is not incomplete.")
-            processed_filepaths.remove(last_entry["file_path"])
+        # rm from processed filepaths
+        print(f"[INFO:] Reprocessing {last_entry_path.stem} to ensure data is not incomplete.")
+        processed_filepaths.remove(last_entry["file_path"])
 
-            # remove the last entry's data from the save file
-            if save_file.exists():
-                with open(save_file) as f:
-                    all_data = [json.loads(line) for line in f if json.loads(line)[id_key] != last_entry["file_path"]]
-
-                # rewrite the save file without the last entry's data
-                with open(save_file, "w") as f:
-                    for data in all_data:
-                        f.write(json.dumps(data) + "\n")
-
-            # rewrite the log file without the last entry
-            with open(log_file, "w") as f:
-                for entry in log:
-                    f.write(json.dumps(entry) + "\n")
-
-    # if not overwriting, load the save file
-    if save_file.exists() and not overwrite:
+        # remove the last entry's data from the save file
         with open(save_file) as f:
-            all_data = [json.loads(line) for line in f]
+            all_data = [json.loads(line) for line in f if json.loads(line)["newspaper_name"] != str(last_entry_path.stem)]
+
+        # rewrite the save file without the last entry's data
+        with open(save_file, "w") as f:
+            for data in all_data:
+                f.write(json.dumps(data) + "\n")
+
+        # rewrite the log file without the last entry
+        with open(log_file, "w") as f:
+            for entry in log[:-1]:
+                f.write(json.dumps(entry) + "\n")
 
     # process files in file_paths
     for file_path in tqdm(file_paths):
         # check if the file has been processed, and skip it unless overwrite is enabled
         if str(file_path) in processed_filepaths and not overwrite:
-            print(f"[INFO:] File {file_path.stem} already processed. Skipping.")
             continue
         
         # process the file
