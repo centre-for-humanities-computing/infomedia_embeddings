@@ -1,7 +1,7 @@
 import pathlib 
-import pandas as pd
+import json
 
-def query_terms(): 
+def hpv_query_terms(): 
     '''
     from original paper: 
     https://bmcpublichealth.biomedcentral.com/articles/10.1186/s12889-018-6268-x
@@ -29,41 +29,50 @@ def query_terms():
 
     return pairs
 
-def query_df(df, term_pairs):
+def query_json_ids(data, term_pairs, text_key="content", id_key="entry_id"):
     '''
-    query df for all term pairs. save a new df with the ids of the articles that match
+    query json for all term pairs. 
     '''
-    ids = []
+    all_ids = []
 
-    for term_pair in term_pairs: 
-        query = df[df["content"].str.contains(term_pair[0]) & df["content"].str.contains(term_pair[1])]
-        
-        # save the ids of the articles that match
-        query_ids = query["entry_id"].tolist()
+    for pair in term_pairs:
+        term1, term2 = pair
 
-        ids.extend(query_ids)
+        for row in data: 
+            text = row[text_key]
 
-    # filter df for the ids that match, avoid duplicates
-    ids = set(ids)
-    query_df = df[df["entry_id"].isin(ids)].reset_index(drop=True)
+            if term1 in text and term2 in text.split(" "):
+                all_ids.append(row[id_key])
 
-    return query_df
+    # an article can match multiple term pairs, but we only want it once
+    unique_ids = list(set(all_ids))
 
+    return unique_ids
 
 def main(): 
-    term_pairs = query_terms()
-
     path = pathlib.Path(__file__)
     corpus_path = path.parents[3] / "infomedia-embedding" / "dat" / "corpus" / "Berlingske_Nyhedsbureau_BNB.jsonl"
 
-    df = pd.read_json(str(corpus_path), lines=True)
+    with open(corpus_path) as f:
+        data = [json.loads(line) for line in f]
 
-    # query df all terms in term_pairs - return ids for those that match
-    filtered_df = query_df(df, term_pairs)
+    # get terms 
+    hpv_term_pairs = hpv_query_terms()
 
-    print(filtered_df["content"][0])
-    print(filtered_df["content"][1])
-    
+    # get ids
+    ids = query_json_ids(
+                        data = data,
+                        term_pairs = hpv_term_pairs,
+                        text_key="content",
+                        id_key="entry_id"
+                        )
+
+    # get all
+    hpv_data = [row for row in data if row["entry_id"] in ids]
+
+    print(hpv_data[10]["content"])
+    print(hpv_data[20]["content"])
+
 
 if __name__ == "__main__": 
     main()
