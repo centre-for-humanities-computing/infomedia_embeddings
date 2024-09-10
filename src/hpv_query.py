@@ -1,11 +1,11 @@
 """
 Make a query for HPV articles in the corpus (based on original paper https://bmcpublichealth.biomedcentral.com/articles/10.1186/s12889-018-6268-x)
 
-Run the script to query corpus and save the results in a jsonl file to specified path. Note that if you re-run the script with the same save path, the file will be overwritten!
-    python hpv_query.py --save_path <path_to_save> 
+Run the script to query corpus and save the results in a jsonl "hpv_query_data.jsonl" to specified path. Note that if you re-run the script with the same save path, the file will be overwritten!
+    python hpv_query.py --out_path <path> 
 
 Example: (where data is currently saved)
-    python hpv_query.py --save_path ../../infomedia-embedding/dat/hpv_data/
+    python hpv_query.py --out_path ../../infomedia-embedding/dat/hpv_data/
 """
 import argparse
 import json
@@ -94,8 +94,7 @@ def process_all_files(
         save_file: pathlib.Path
         text_key: str
     """
-    if save_file.exists() and save_file.suffix == ".jsonl": 
-        save_file.unlink() # since we are appending to the savefile, we want to remove it if we re-run the script (to avoid duplicates)
+    save_file.open("w")
 
     for file_path in tqdm(file_paths):
         queried_entries = process_one_file(file_path, text_key)
@@ -107,7 +106,7 @@ def process_all_files(
 def input_parse():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--save_path",
+        "--out_path",
         type=str,
         help="Path to save the hpv query data",
         required=True,
@@ -125,12 +124,12 @@ def main():
     file_paths = sorted(file_paths)
 
     # create save path
-    save_path = pathlib.Path(args.save_path)
-    save_path.mkdir(exist_ok=True, parents=True)
+    out_path = pathlib.Path(args.out_path)
+    out_path.mkdir(exist_ok=True, parents=True)
 
     process_all_files(
         file_paths=file_paths,
-        save_file=save_path / "hpv_query_data.jsonl",
+        save_file=out_path / "hpv_query_data.jsonl",
         text_key="content"
     )
 
