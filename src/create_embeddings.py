@@ -53,6 +53,14 @@ def input_parse():
         help="Name of the model to use.",
         default="intfloat/multilingual-e5-large",
     )
+
+    parser.add_argument(
+        "--batch_size",
+        type=int,
+        help="Batch size for encoding",
+        default=32,
+    )
+
     parser.add_argument(
         "--in_file",
         type=str,
@@ -87,7 +95,7 @@ def main():
 
     # encode
     model = E5Model(model_name=args.model_name) 
-    embeddings = model.encode(sentences=sents, batch_size=32, query_type="passage", normalize=False)
+    embeddings = model.encode(sentences=sents, batch_size=args.batch_size, query_type="passage", normalize=False)
     
     # save embeddings
     out_file = pathlib.Path(args.out_file) if args.out_file is not None else default_paths["out_file"]
