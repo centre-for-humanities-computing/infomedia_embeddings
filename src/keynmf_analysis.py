@@ -66,7 +66,7 @@ events = pd.DataFrame(
         ],
     }
 )
-fig = model.plot_topics_over_time()
+fig = model.plot_topics_over_time(top_k=10)
 events["date"] = pd.to_datetime(events["date"])
 for idx, row in events.iterrows():
     fig = fig.add_vline(x=row["date"])
@@ -89,7 +89,7 @@ fig.write_html(figures_dir.joinpath("keynmf_20_topics_over_time.html"))
 topics_dir = Path("topics")
 topics_dir.mkdir(exist_ok=True)
 with topics_dir.joinpath("keynmf_20_topics_over_time.csv").open("w") as out_file:
-    out_file.write(model.export_topics_over_time(format="csv"))
+    out_file.write(model.export_topics_over_time(top_k=10, format="csv"))
 
 df_topics = pd.DataFrame(doc_topic_matrix, columns=model.topic_names)
 df_topics.to_csv(topics_dir.joinpath("keynmf_20_doc_topic_matrix.csv"))
