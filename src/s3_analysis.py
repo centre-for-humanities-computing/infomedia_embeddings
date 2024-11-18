@@ -69,7 +69,7 @@ data["date"] = pd.to_datetime(data["date"])
 corpus = list(data.content)
 embeddings = embeddings[data.index]
 
-model = DynamicS3(10, encoder=trf, random_state=42)
+model = DynamicS3(20, encoder=trf, random_state=42)
 doc_topic_matrix = model.fit_transform_dynamic(
     corpus, embeddings=embeddings, timestamps=data["date"], bins=30
 )
@@ -116,12 +116,12 @@ for idx, row in events.iterrows():
 figures_dir = Path("figures")
 figures_dir.mkdir(exist_ok=True)
 fig.show()
-fig.write_html(figures_dir.joinpath("s3_10_topics_over_time.html"))
+fig.write_html(figures_dir.joinpath("s3_20_topics_over_time.html"))
 
 topics_dir = Path("topics")
 topics_dir.mkdir(exist_ok=True)
-with topics_dir.joinpath("s3_10_topics_over_time.html").open("w") as out_file:
+with topics_dir.joinpath("s3_20_topics_over_time.html").open("w") as out_file:
     out_file.write(model.export_topics_over_time(format="csv"))
 
 df_topics = pd.DataFrame(doc_topic_matrix, columns=model.topic_names)
-df_topics.to_csv(topics_dir.joinpath("keynmf_20_doc_topic_matrix.csv"))
+df_topics.to_csv(topics_dir.joinpath("s3_20_topics_over_time.csv"))
