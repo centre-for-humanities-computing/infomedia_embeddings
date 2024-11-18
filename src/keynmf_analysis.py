@@ -80,6 +80,16 @@ for idx, row in events.iterrows():
         xanchor="right",
     )
 # fig = fig.update_layout(xaxis_range=[datetime(2008, 6, 15), datetime(2016, 5, 1)])
-fig.show()
 
-model.export_topics_over_time(format="csv")
+figures_dir = Path("figures")
+figures_dir.mkdir(exist_ok=True)
+fig.show()
+fig.write_html(figures_dir.joinpath("keynmf_20_topics_over_time.html"))
+
+topics_dir = Path("topics")
+topics_dir.mkdir(exist_ok=True)
+with topics_dir.joinpath("keynmf_20_topics_over_time.html").open("w") as out_file:
+    out_file.write(model.export_topics_over_time(format="csv"))
+
+df_topics = pd.DataFrame(doc_topic_matrix, columns=model.topic_names)
+df_topics.to_csv(topics_dir.joinpath("keynmf_20_doc_topic_matrix.csv"))

@@ -1,5 +1,7 @@
 import json
+from datetime import datetime
 from pathlib import Path
+from typing import Optional, Union
 
 import numpy as np
 import pandas as pd
@@ -8,8 +10,69 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from sentence_transformers import SentenceTransformer
 from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.linear_model import LinearRegression
 from sklearn.metrics.pairwise import cosine_similarity
 from turftopic import SemanticSignalSeparation
+from turftopic.dynamic import DynamicTopicModel
+
+
+class DynamicS3(DynamicTopicModel, SemanticSignalSeparation):
+    def fit_transform_dynamic(
+        self,
+        raw_documents,
+        timestamps: list[datetime],
+        embeddings: Optional[np.ndarray] = None,
+        bins: Union[int, list[datetime]] = 10,
+    ) -> np.ndarray:
+        document_topic_matrix = self.fit_transform(raw_documents, embeddings=embeddings)
+        time_labels, self.time_bin_edges = self.bin_timestamps(timestamps, bins)
+        n_comp, n_vocab = self.components_.shape
+        n_bins = len(self.time_bin_edges) - 1
+        self.temporal_components_ = np.full(
+            (n_bins, n_comp, n_vocab),
+            np.nan,
+            dtype=self.components_.dtype,
+        )
+        self.temporal_importance_ = np.zeros((n_bins, n_comp))
+        whitened_embeddings = np.copy(self.embeddings)
+        if getattr(self.decomposition, "whiten"):
+            whitened_embeddings -= self.decomposition.mean_
+        # doc_topic = np.dot(X, self.components_.T)
+        for i_timebin in np.unique(time_labels):
+            topic_importances = document_topic_matrix[time_labels == i_timebin].mean(
+                axis=0
+            )
+            self.temporal_importance_[i_timebin, :] = topic_importances
+            t_doc_topic = document_topic_matrix[time_labels == i_timebin]
+            t_embeddings = whitened_embeddings[time_labels == i_timebin]
+            linreg = LinearRegression().fit(t_embeddings, t_doc_topic)
+            self.temporal_components_[i_timebin, :, :] = np.dot(
+                self.vocab_embeddings, linreg.coef_.T
+            ).T
+        return document_topic_matrix
+
+
+trf = SentenceTransformer(
+    "intfloat/multilingual-e5-large", prompts=dict(passage="passage: ", query="query: ")
+)
+trf.default_prompt_name = "query"
+
+embeddings = np.load("dat/hpv_embeddings.npy")
+records = []
+with Path("dat/hpv_query_data.jsonl").open() as in_file:
+    for line in in_file:
+        records.append(json.loads(line))
+
+data = pd.DataFrame.from_records(records)
+data["date"] = pd.to_datetime(data["date"])
+
+corpus = list(data.content)
+embeddings = embeddings[data.index]
+
+model = DynamicS3(10, encoder=trf, random_state=42)
+doc_topic_matrix = model.fit_transform_dynamic(
+    corpus, embeddings=embeddings, timestamps=data["date"], bins=30
+)
 
 events = pd.DataFrame(
     {
@@ -37,51 +100,28 @@ events = pd.DataFrame(
         ],
     }
 )
+fig = model.plot_topics_over_time()
 events["date"] = pd.to_datetime(events["date"])
-
-model = SentenceTransformer(
-    "intfloat/multilingual-e5-large", prompts=dict(passage="passage: ", query="query: ")
-)
-model.default_prompt_name = "query"
-
-embeddings = np.load("dat/hpv_embeddings.npy")
-records = []
-with Path("dat/hpv_query_data.jsonl").open() as in_file:
-    for line in in_file:
-        records.append(json.loads(line))
-
-data = pd.DataFrame.from_records(records)
-data["date"] = pd.to_datetime(data["date"])
-data = data.sort_values("date")
-
-corpus = list(data.content)
-embeddings = embeddings[data.index]
-
-topic_model = SemanticSignalSeparation(
-    10, encoder=model, vectorizer=CountVectorizer(max_features=8000), random_state=42
-)
-document_topic_matrix = topic_model.fit_transform(corpus, embeddings=embeddings)
-
-topic_model.print_topics(top_k=10)
-
-topic_model.print_representative_documents(8, corpus, document_topic_matrix)
-
-relevant_topic = -document_topic_matrix[:, 8]
-days = data.assign(signal=relevant_topic).groupby("date")[["signal"]].mean()
-days = days.rolling(window=30).mean()
-days = days.dropna().reset_index()
-
-fig = px.line(days, x="date", y="signal", template="plotly_white")
 for idx, row in events.iterrows():
     fig = fig.add_vline(x=row["date"])
     fig = fig.add_annotation(
         x=row["date"],
-        y=np.random.normal(1, 0.5),
+        y=np.random.normal(0.25, 0.05),
         text=row["event_name"],
         showarrow=False,
         textangle=-90,
         xshift=0,
         xanchor="right",
     )
-fig = fig.update_layout(template="plotly_white")
+figures_dir = Path("figures")
+figures_dir.mkdir(exist_ok=True)
 fig.show()
+fig.write_html(figures_dir.joinpath("s3_10_topics_over_time.html"))
+
+topics_dir = Path("topics")
+topics_dir.mkdir(exist_ok=True)
+with topics_dir.joinpath("s3_10_topics_over_time.html").open("w") as out_file:
+    out_file.write(model.export_topics_over_time(format="csv"))
+
+df_topics = pd.DataFrame(doc_topic_matrix, columns=model.topic_names)
+df_topics.to_csv(topics_dir.joinpath("keynmf_20_doc_topic_matrix.csv"))
