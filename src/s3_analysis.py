@@ -124,4 +124,4 @@ with topics_dir.joinpath("s3_20_topics_over_time.csv").open("w") as out_file:
     out_file.write(model.export_topics_over_time(format="csv"))
 
 df_topics = pd.DataFrame(doc_topic_matrix, columns=model.topic_names)
-df_topics.to_csv(topics_dir.joinpath("s3_20_topics_over_time.csv"))
+df_topics.to_csv(topics_dir.joinpath("s3_20_doc_topic_matrix.csv"))
