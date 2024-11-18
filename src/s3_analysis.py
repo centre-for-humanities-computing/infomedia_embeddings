@@ -120,7 +120,7 @@ fig.write_html(figures_dir.joinpath("s3_20_topics_over_time.html"))
 
 topics_dir = Path("topics")
 topics_dir.mkdir(exist_ok=True)
-with topics_dir.joinpath("s3_20_topics_over_time.html").open("w") as out_file:
+with topics_dir.joinpath("s3_20_topics_over_time.csv").open("w") as out_file:
     out_file.write(model.export_topics_over_time(format="csv"))
 
 df_topics = pd.DataFrame(doc_topic_matrix, columns=model.topic_names)
