@@ -118,7 +118,7 @@ figures_dir.mkdir(exist_ok=True)
 fig.show()
 fig.write_html(figures_dir.joinpath("s3_20_topics_over_time.html"))
 
-compass = model.concept_compass(topic_x=1, topic_y=8)
+compass = model.concept_compass(topic_x=1, topic_y=10)
 compass.show()
 compass.write_html(figures_dir.joinpath("s3_20_concept_compass.html"))
 
