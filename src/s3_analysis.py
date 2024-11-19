@@ -119,8 +119,8 @@ fig.show()
 fig.write_html(figures_dir.joinpath("s3_20_topics_over_time.html"))
 
 compass = model.concept_compass(topic_x=1, topic_y=8)
-fig.show()
-fig.write_html(figures_dir.joinpath("s3_20_concept_compass.html"))
+compass.show()
+compass.write_html(figures_dir.joinpath("s3_20_concept_compass.html"))
 
 topics_dir = Path("topics")
 topics_dir.mkdir(exist_ok=True)
