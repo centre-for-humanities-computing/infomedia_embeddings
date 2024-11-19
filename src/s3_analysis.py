@@ -118,10 +118,18 @@ figures_dir.mkdir(exist_ok=True)
 fig.show()
 fig.write_html(figures_dir.joinpath("s3_20_topics_over_time.html"))
 
+compass = model.concept_compass(topic_x=1, topic_y=8)
+fig.show()
+fig.write_html(figures_dir.joinpath("s3_20_concept_compass.html"))
+
 topics_dir = Path("topics")
 topics_dir.mkdir(exist_ok=True)
 with topics_dir.joinpath("s3_20_topics_over_time.csv").open("w") as out_file:
     out_file.write(model.export_topics_over_time(top_k=10, format="csv"))
+with topics_dir.joinpath("s3_20_topic_descriptions.csv").open("w") as out_file:
+    out_file.write(model.export_topics(top_k=10, format="csv"))
 
 df_topics = pd.DataFrame(doc_topic_matrix, columns=model.topic_names)
 df_topics.to_csv(topics_dir.joinpath("s3_20_doc_topic_matrix.csv"))
+
+model.push_to_hub("kardosdrur/hpv_s3_20")
